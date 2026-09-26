@@ -316,6 +316,115 @@ describe("Tempo Widget", () => {
 
             expect(() => tempoWidget._updateBPM(0)).not.toThrow();
         });
+
+        test("should not throw when connections is empty or lacks dock 1", () => {
+            mockActivity.blocks.blockList = {
+                0: { connections: [] }
+            };
+            tempoWidget.BPMBlocks[0] = 0;
+            tempoWidget.BPMs[0] = 150;
+
+            expect(() => tempoWidget._updateBPM(0)).not.toThrow();
+        });
+
+        test("should not throw when connections is missing or null", () => {
+            mockActivity.blocks.blockList = {
+                0: { connections: null }
+            };
+            tempoWidget.BPMBlocks[0] = 0;
+            tempoWidget.BPMs[0] = 150;
+
+            expect(() => tempoWidget._updateBPM(0)).not.toThrow();
+        });
+
+        test("should not throw when target block in blockList does not exist", () => {
+            mockActivity.blocks.blockList = {
+                0: { connections: [null, 999] }
+            };
+            tempoWidget.BPMBlocks[0] = 0;
+            tempoWidget.BPMs[0] = 150;
+
+            expect(() => tempoWidget._updateBPM(0)).not.toThrow();
+        });
+
+        test("should handle target block without text or updateCache safely", () => {
+            const mockValueBlock = {
+                value: 100
+            };
+            mockActivity.blocks.blockList = {
+                0: { connections: [null, 1] },
+                1: mockValueBlock
+            };
+            tempoWidget.BPMBlocks[0] = 0;
+            tempoWidget.BPMs[0] = 150;
+
+            expect(() => tempoWidget._updateBPM(0)).not.toThrow();
+            expect(mockValueBlock.value).toBe(150);
+        });
+
+        test("should update turtle singer bpm when bpmBlock is setbpm3", () => {
+            const mockTurtle = {
+                singer: {
+                    bpm: [100]
+                }
+            };
+            mockActivity.turtles = {
+                turtleList: [mockTurtle]
+            };
+            mockActivity.blocks.blockList = {
+                0: { name: "setbpm3", connections: [null, null] }
+            };
+            tempoWidget.BPMBlocks[0] = 0;
+            tempoWidget.BPMs[0] = 160;
+
+            expect(() => tempoWidget._updateBPM(0)).not.toThrow();
+            expect(mockTurtle.singer.bpm[0]).toBe(160);
+        });
+
+        test("should safely handle turtles with missing singer, missing bpm, or null entries", () => {
+            mockActivity.turtles = {
+                turtleList: [
+                    null,
+                    undefined,
+                    {},
+                    { singer: null },
+                    { singer: {} },
+                    { singer: { bpm: null } },
+                    { singer: { bpm: [] } }
+                ]
+            };
+            mockActivity.blocks.blockList = {
+                0: { name: "setbpm3", connections: [null, null] }
+            };
+            tempoWidget.BPMBlocks[0] = 0;
+            tempoWidget.BPMs[0] = 160;
+
+            expect(() => tempoWidget._updateBPM(0)).not.toThrow();
+        });
+
+        test("should not throw when activity.turtles is undefined and bpmBlock is setbpm3", () => {
+            delete mockActivity.turtles;
+            mockActivity.blocks.blockList = {
+                0: { name: "setbpm3", connections: [null, null] }
+            };
+            tempoWidget.BPMBlocks[0] = 0;
+            tempoWidget.BPMs[0] = 160;
+
+            expect(() => tempoWidget._updateBPM(0)).not.toThrow();
+        });
+
+        test("should update Singer.masterBPM when bpmBlock is setmasterbpm2", () => {
+            global.Singer = { masterBPM: 120, defaultBPMFactor: 1 };
+            global.TONEBPM = 120;
+            mockActivity.blocks.blockList = {
+                0: { name: "setmasterbpm2", connections: [null, null] }
+            };
+            tempoWidget.BPMBlocks[0] = 0;
+            tempoWidget.BPMs[0] = 140;
+
+            expect(() => tempoWidget._updateBPM(0)).not.toThrow();
+            expect(global.Singer.masterBPM).toBe(140);
+        });
     });
 
     // --- _saveTempo() and __save() tests ---

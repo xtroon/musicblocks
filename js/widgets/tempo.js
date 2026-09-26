@@ -386,24 +386,38 @@ class Tempo {
             return;
         }
 
-        const bpmBlock = this.activity.blocks.blockList[this.BPMBlocks[i]];
+        const bpmBlock = this.activity?.blocks?.blockList?.[this.BPMBlocks[i]];
         if (!bpmBlock) return;
-        const blockNumber = bpmBlock.connections[1];
-        if (blockNumber !== null) {
-            this.activity.blocks.blockList[blockNumber].value = parseFloat(this.BPMs[i]);
-            this.activity.blocks.blockList[blockNumber].text.text = this.BPMs[i];
-            this.activity.blocks.blockList[blockNumber].updateCache();
-            this.activity.refreshCanvas();
-            this.activity.saveLocally();
+        const blockNumber = bpmBlock.connections ? bpmBlock.connections[1] : null;
+        if (blockNumber !== null && blockNumber !== undefined) {
+            const targetBlock = this.activity?.blocks?.blockList?.[blockNumber];
+            if (targetBlock) {
+                targetBlock.value = parseFloat(this.BPMs[i]);
+                if (targetBlock.text) {
+                    targetBlock.text.text = this.BPMs[i];
+                }
+                if (typeof targetBlock.updateCache === "function") {
+                    targetBlock.updateCache();
+                }
+                if (typeof this.activity?.refreshCanvas === "function") {
+                    this.activity.refreshCanvas();
+                }
+                if (typeof this.activity?.saveLocally === "function") {
+                    this.activity.saveLocally();
+                }
+            }
         }
 
         const bpmValue = parseFloat(this.BPMs[i]);
         if (bpmBlock.name === "setmasterbpm2" || bpmBlock.name === "setmasterbpm") {
-            Singer.masterBPM = bpmValue;
-            Singer.defaultBPMFactor = TONEBPM / bpmValue;
+            if (typeof Singer !== "undefined") {
+                Singer.masterBPM = bpmValue;
+                Singer.defaultBPMFactor = TONEBPM / bpmValue;
+            }
         } else if (bpmBlock.name === "setbpm3" || bpmBlock.name === "setbpm2") {
-            for (const tur of this.activity.turtles.turtleList) {
-                if (tur.singer.bpm.length > 0) {
+            const turtleList = this.activity?.turtles?.turtleList || [];
+            for (const tur of turtleList) {
+                if (Array.isArray(tur?.singer?.bpm) && tur.singer.bpm.length > 0) {
                     tur.singer.bpm[tur.singer.bpm.length - 1] = bpmValue;
                 }
             }
