@@ -19,6 +19,8 @@
 
 const Turtles = require("../turtles");
 const { setupGridController } = require("../activity/grid-controller.js");
+const ManagedTimer = require("../utils/ManagedTimer");
+global.ManagedTimer = ManagedTimer;
 
 global.createjs = {
     Container: jest.fn().mockImplementation(() => ({
@@ -1019,6 +1021,9 @@ describe("aux toolbar collapse and expand", () => {
             // Fire resize to schedule 150ms timeout
             turtles._resizeHandler();
             expect(turtles._resizeTimeout).not.toBeNull();
+            if (turtles._timerManager) {
+                expect(turtles._timerManager.activeTimeoutCount).toBe(1);
+            }
 
             // Re-render occurs within debounce window (e.g. via setBackgroundColor or doScale)
             turtles._locked = false;
@@ -1026,6 +1031,50 @@ describe("aux toolbar collapse and expand", () => {
 
             // The pending timeout must have been cancelled and cleared
             expect(turtles._resizeTimeout).toBeNull();
+            if (turtles._timerManager) {
+                expect(turtles._timerManager.activeTimeoutCount).toBe(0);
+            }
+        } finally {
+            jest.useRealTimers();
+            global.platformColor = originalPlatformColor;
+            global.makeKeyboardAccessible = originalMakeKeyboardAccessible;
+        }
+    });
+
+    test("tracks debounced resize through ManagedTimer when available", () => {
+        const originalPlatformColor = global.platformColor;
+        const originalMakeKeyboardAccessible = global.makeKeyboardAccessible;
+
+        global.platformColor = { ruleColor: "#000" };
+        global.makeKeyboardAccessible = jest.fn();
+        global.Image = class extends originalImage {
+            constructor() {
+                super();
+                Object.defineProperty(this, "src", {
+                    configurable: true,
+                    set: () => {
+                        this.onload?.();
+                    }
+                });
+            }
+        };
+        jest.useFakeTimers();
+
+        try {
+            turtles._locked = false;
+            turtles.makeBackground();
+
+            expect(turtles._timerManager).toBeInstanceOf(ManagedTimer);
+
+            turtles._resizeHandler();
+            expect(turtles._timerManager.activeTimeoutCount).toBe(1);
+
+            // A second rapid resize clears previous timer and schedules a new one
+            turtles._resizeHandler();
+            expect(turtles._timerManager.activeTimeoutCount).toBe(1);
+
+            jest.advanceTimersByTime(150);
+            expect(turtles._timerManager.activeTimeoutCount).toBe(0);
         } finally {
             jest.useRealTimers();
             global.platformColor = originalPlatformColor;
